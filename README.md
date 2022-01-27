@@ -24,16 +24,28 @@ powerfunctions.connectIrLed(AnalogPin.P0)
 ## powerfunctions.cfgSendCountDelay
 
 Configures send count and delay (the IR message is transmitted count-times with delay between messages).
-Sending of the complete message in default setup (`count` = five-times and `delay` = normal) can take around 0.8 second in worst case.
+Sending of the complete message in default setup (`count` = five-times and `delay` = delay_normal) can take around 0.8 second in worst case.
 Setting these parameters to values different than default can speed-up data sending at cost of lower reliability.
-Sending of the complete message in short setup (`count` = five-times and `delay` = short) can take around 0.16 second in worst case.
+Sending of the complete message in short setup (`count` = five-times and `delay` = delay_short) can take around 0.16 second in worst case.
 
 ```sig
-powerfunctions.cfgSendCountDelay(PowerFunctionSendCount.five_times, PowerFunctionSendDelay.normal)
+powerfunctions.cfgSendCountDelay(PowerFunctionSendCount.five_times, PowerFunctionSendDelay.delay_normal)
 ```
 #### Parameters
 - `count` - the IR message is transmitted count-times
-- `delay` - the delay between messages. It is safe to set this parameter to 'short' in case of single LEGO® IR Receiver.
+- `delay` - the delay between messages. It is safe to set this parameter to 'delay_short' in case of single LEGO® IR Receiver.
+
+## powerfunctions.cfgMotorSpeedZeroCh
+
+Configures zero speed behaviour of the motor (float or brake).
+
+```sig
+powerfunctions.cfgMotorSpeedZeroCh(PowerFunctionsOutput.Red, 1, speed_0_brake)
+```
+#### Parameters
+- `motor` - the motor
+- `channel` - the channel of the motor from `1` to `4`
+- `behaviour` - the behaviour of the motor when speed is set to zero (float or brake)
 
 ## powerfunctions.setSpeed
 

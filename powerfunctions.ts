@@ -5,6 +5,12 @@
  * (c) 2017-2020, Philipp Henkel
  */
 
+enum PowerFunctionSpeedZero {
+  //% block="float (default)"
+  speed_0_float = 0,
+  //% block="brake"
+  speed_0_brake = 1,
+}
 enum PowerFunctionSendDelay {
   //% block="normal (default)"
   delay_normal = 1,
@@ -85,6 +91,7 @@ namespace powerfunctions {
     sendCount: PowerFunctionSendCount;
     sendDelay: PowerFunctionSendDelay;
     motorDirections: PowerFunctionsDirection[];
+    motorSpeedZeros: PowerFunctionSpeedZero[];
   }
 
   let state: PowerFunctionsState;
@@ -151,6 +158,16 @@ namespace powerfunctions {
         PowerFunctionsDirection.Left,
         PowerFunctionsDirection.Left,
       ],
+      motorSpeedZeros: [
+        PowerFunctionSpeedZero.speed_0_float,
+        PowerFunctionSpeedZero.speed_0_float,
+        PowerFunctionSpeedZero.speed_0_float,
+        PowerFunctionSpeedZero.speed_0_float,
+        PowerFunctionSpeedZero.speed_0_float,
+        PowerFunctionSpeedZero.speed_0_float,
+        PowerFunctionSpeedZero.speed_0_float,
+        PowerFunctionSpeedZero.speed_0_float,
+      ],
     };
   }
 
@@ -170,6 +187,24 @@ namespace powerfunctions {
   }
 
   /**
+   * Configures zero speed behaviour of the motor (float or brake).
+   * @param motor the motor
+   * @param channel the channel
+   * @param behaviour the behaviour
+   */
+  //% blockId=pf_cfg_motor_speed_zero_ch
+  //% block="config zero speed of motor %motor channel %channel to %behaviour"
+  //% channel.min=1 channel.max=4 channel.defl=1
+  //% behaviour.defl=0
+  //% weight=87
+  export function cfgMotorSpeedZeroCh(motor: PowerFunctionsOutput, channel: number, behaviour: PowerFunctionSpeedZero) {
+    channel = Math.max(1, Math.min(4, channel));
+    if (state) {
+      state.motorSpeedZeros[motor * 4 + channel - 1] = behaviour;
+    }
+  }
+
+  /**
    * Sets the speed of a motor.
    * @param motor the motor
    * @param speed speed of the motor, eg: 3
@@ -181,12 +216,15 @@ namespace powerfunctions {
   //% motor.fieldEditor="gridpicker" motor.fieldOptions.columns=4 motor.fieldOptions.tooltips="false"
   export function setSpeed(motor: PowerFunctionsMotor, speed: number) {
     speed = Math.max(-7, Math.min(7, speed));
+    if (speed == 0) {
+      if (state.motorSpeedZeros[motor] == PowerFunctionSpeedZero.speed_0_float) {
+        speed = 8;
+      }
+    } else {
+      speed = speed * state.motorDirections[motor];
+    }
     if (state) {
-      sendSingleOutputCommand(
-        getChannel(motor),
-        getOutput(motor),
-        speed * state.motorDirections[motor]
-      );
+      sendSingleOutputCommand(getChannel(motor), getOutput(motor), speed);
     }
   }
 
@@ -200,7 +238,9 @@ namespace powerfunctions {
   //% weight=75
   //% motor.fieldEditor="gridpicker" motor.fieldOptions.columns=4 motor.fieldOptions.tooltips="false"
   export function brake(motor: PowerFunctionsMotor) {
-    setSpeed(motor, 0);
+    if (state) {
+      sendSingleOutputCommand(getChannel(motor), getOutput(motor), 0);
+    }
   }
 
   /**
