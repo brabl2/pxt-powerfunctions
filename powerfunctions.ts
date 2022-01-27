@@ -5,6 +5,24 @@
  * (c) 2017-2020, Philipp Henkel
  */
 
+enum PowerFunctionSendDelay {
+  //% block="normal (default)"
+  delay_normal = 1,
+  //% block="short (16ms)"
+  delay_short = 0,
+}
+enum PowerFunctionSendCount {
+  //% block="5x (default)"
+  five_times = 5,
+  //% block="4x"
+  four_times = 4,
+  //% block="3x"
+  three_times = 3,
+  //% block="2x"
+  twice = 2,
+  //% block="1x"
+  once = 1,
+}
 enum PowerFunctionsChannel {
   //% block="1"
   One = 0,
@@ -64,6 +82,8 @@ enum PowerFunctionsCommand {
 namespace powerfunctions {
   interface PowerFunctionsState {
     irDevice: InfraredDevice;
+    sendCount: PowerFunctionSendCount;
+    sendDelay: PowerFunctionSendDelay;
     motorDirections: PowerFunctionsDirection[];
   }
 
@@ -119,6 +139,8 @@ namespace powerfunctions {
   export function connectIrLed(pin: AnalogPin) {
     state = {
       irDevice: new InfraredDevice(pin),
+      sendCount: PowerFunctionSendCount.five_times,
+      sendDelay: PowerFunctionSendDelay.delay_normal,
       motorDirections: [
         PowerFunctionsDirection.Left,
         PowerFunctionsDirection.Left,
@@ -130,6 +152,21 @@ namespace powerfunctions {
         PowerFunctionsDirection.Left,
       ],
     };
+  }
+
+  /**
+   * Configures send count and delay (the IR message is transmitted count-times with delay between messages).
+   * @param count the send count
+   * @param delay the send delay
+   */
+  //% blockId=pf_cfg_send_count_delay
+  //% block="config send count to %count and delay to %delay"
+  //% weight=89
+  export function cfgSendCountDelay(count: PowerFunctionSendCount, delay: PowerFunctionSendDelay) {
+    if (state) {
+      state.sendCount = count;
+      state.sendDelay = delay;
+    }
   }
 
   /**
@@ -324,7 +361,7 @@ namespace powerfunctions {
       const low_pause = LOW_PAUSE - this.waitCorrection;
       const start_stop_pause = START_STOP_PAUSE - this.waitCorrection;
 
-      for (let sendCount = 0; sendCount < 5; sendCount++) {
+      for (let sendCount = (5 - state.sendCount); sendCount < 5; sendCount++) {
         const MESSAGE_BITS = 16;
 
         let mask = 1 << (MESSAGE_BITS - 1);
@@ -345,7 +382,9 @@ namespace powerfunctions {
         // stop bit
         this.transmitBit(ir_mark, start_stop_pause);
 
-        if (sendCount == 0 || sendCount == 1) {
+        if (state.sendDelay == PowerFunctionSendDelay.delay_short) {
+          basic.pause(MAX_LENGTH_MS); //16ms
+        } else if (sendCount == 0 || sendCount == 1) {
           basic.pause(5 * MAX_LENGTH_MS);
         } else {
           basic.pause((6 + 2 * channel) * MAX_LENGTH_MS);

@@ -1,7 +1,5 @@
 # Power Functions IR Sender
 
-[![Build Status](https://travis-ci.org/philipphenkel/pxt-powerfunctions.svg?branch=master)](https://travis-ci.org/philipphenkel/pxt-powerfunctions)
-
 Control your LEGO® Power Functions motors using your micro:bit or Calliope-Mini, an infrared LED and MakeCode.
 This extension turns your device into a remote control for your Power Functions devices.
 
@@ -9,7 +7,7 @@ A project using this extension is documented on [hackster.io](https://www.hackst
 
 ## Installation
 
-Open MakeCode and select '+ Extensions' in the 'Advanced' menu. You need to enter our project URL https://github.com/philipphenkel/pxt-powerfunctions in the search field, hit return and then select the powerfunctions extension.
+Open MakeCode and select '+ Extensions' in the 'Advanced' menu. You need to enter our project URL https://github.com/brabl2/pxt-powerfunctions in the search field, hit return and then select the powerfunctions extension.
 
 # Documentation
 
@@ -20,10 +18,22 @@ Configures the infrared LED pin. A 940 nm emitting diode is required.
 ```sig
 powerfunctions.connectIrLed(AnalogPin.P0)
 ```
-
-### Parameters
-
+#### Parameters
 - `pin` - analog pin with an attached IR-emitting LED
+
+## powerfunctions.cfgSendCountDelay
+
+Configures send count and delay (the IR message is transmitted count-times with delay between messages).
+Sending of the complete message in default setup (`count` = five-times and `delay` = normal) can take around 0.8 second in worst case.
+Setting these parameters to values different than default can speed-up data sending at cost of lower reliability.
+Sending of the complete message in short setup (`count` = five-times and `delay` = short) can take around 0.16 second in worst case.
+
+```sig
+powerfunctions.cfgSendCountDelay(PowerFunctionSendCount.five_times, PowerFunctionSendDelay.normal)
+```
+#### Parameters
+- `count` - the IR message is transmitted count-times
+- `delay` - the delay between messages. It is safe to set this parameter to 'short' in case of single LEGO® IR Receiver.
 
 ## powerfunctions.setSpeed
 
@@ -32,9 +42,7 @@ Sets the speed of a motor.
 ```sig
 powerfunctions.setSpeed(PowerFunctionsMotor.Red1, 3)
 ```
-
-### Parameters
-
+#### Parameters
 - `motor` - the motor
 - `speed` - the speed of the motor from `-7` to `7`.
 
@@ -45,9 +53,7 @@ Brakes then float. The motor's power is quickly reversed and thus the motor will
 ```sig
 powerfunctions.brake(PowerFunctionsMotor.Red1)
 ```
-
-### Parameters
-
+#### Parameters
 - `motor` - the motor
 
 ## powerfunctions.float
@@ -57,9 +63,7 @@ Floats a motor to stop. The motor's power is switched off and thus the motor wil
 ```sig
 powerfunctions.float(PowerFunctionsMotor.Red1)
 ```
-
-### Parameters
-
+#### Parameters
 - `motor` - the motor
 
 ## powerfunctions.setMotorDirection
@@ -69,9 +73,7 @@ Configures a motor direction.
 ```sig
 powerfunctions.setMotorDirection(PowerFunctionsMotor.Red1, PowerFunctionsDirection.Right)
 ```
-
-### Parameters
-
+#### Parameters
 - `motor` - the motor
 - `direction` - the direction of the motor
 
@@ -80,11 +82,7 @@ powerfunctions.setMotorDirection(PowerFunctionsMotor.Red1, PowerFunctionsDirecti
 ```blocks
 basic.showIcon(IconNames.Heart);
 powerfunctions.connectIrLed(AnalogPin.P1);
-
-powerfunctions.setMotorDirection(
-  PowerFunctionsMotor.Blue1,
-  PowerFunctionsDirection.Backward
-);
+powerfunctions.setMotorDirection(PowerFunctionsMotor.Blue1, PowerFunctionsDirection.Right);
 
 input.onButtonPressed(Button.A, () => {
   powerfunctions.setSpeed(PowerFunctionsMotor.Blue1, 3);
