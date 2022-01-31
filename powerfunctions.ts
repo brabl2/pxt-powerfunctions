@@ -88,6 +88,7 @@ enum PowerFunctionsCommand {
 namespace powerfunctions {
   interface PowerFunctionsState {
     irDevice: InfraredDevice;
+    messageToggle : number;
     sendCount: PowerFunctionSendCount;
     sendDelay: PowerFunctionSendDelay;
     motorDirections: PowerFunctionsDirection[];
@@ -135,6 +136,17 @@ namespace powerfunctions {
     }
   }
 
+  function sendSingleOutputIncDecCommand(
+    channel: PowerFunctionsChannel,
+    output: PowerFunctionsOutput,
+    value: number
+  ) {
+    const msg = message.createSingleOutputIncDecMessage(channel, output, value);
+    if (state) {
+      state.irDevice.sendMessage(msg);
+    }
+  }
+
   /**
    * Configures the infrared LED pin. A 940 nm emitting diode is required.
    * @param pin pin an attached IR LED
@@ -146,6 +158,7 @@ namespace powerfunctions {
   export function connectIrLed(pin: AnalogPin) {
     state = {
       irDevice: new InfraredDevice(pin),
+      messageToggle: 0,
       sendCount: PowerFunctionSendCount.five_times,
       sendDelay: PowerFunctionSendDelay.delay_normal,
       motorDirections: [
@@ -201,6 +214,38 @@ namespace powerfunctions {
     channel = Math.max(1, Math.min(4, channel));
     if (state) {
       state.motorSpeedZeros[motor * 4 + channel - 1] = behaviour;
+    }
+  }
+
+  /**
+   * Increments motor speed.
+   * @param motor the motor
+   * @param channel the channel
+   */
+  //% blockId=pf_inc_ch
+  //% block="increment motor %motor channel %channel speed"
+  //% channel.min=1 channel.max=4 channel.defl=1
+  //% weight=55
+  export function incCh(motor: PowerFunctionsOutput, channel: number) {
+    channel = Math.max(1, Math.min(4, channel));
+    if (state) {
+      sendSingleOutputIncDecCommand(channel - 1, motor, +1 * state.motorDirections[motor * 4 + channel - 1]);
+    }
+  }
+
+  /**
+   * Decrements motor speed.
+   * @param motor the motor
+   * @param channel the channel
+   */
+  //% blockId=pf_dec_ch
+  //% block="decrement motor %motor channel %channel speed"
+  //% channel.min=1 channel.max=4 channel.defl=1
+  //% weight=50
+  export function decCh(motor: PowerFunctionsOutput, channel: number) {
+    channel = Math.max(1, Math.min(4, channel));
+    if (state) {
+      sendSingleOutputIncDecCommand(channel - 1, motor, -1 * state.motorDirections[motor * 4 + channel - 1]);
     }
   }
 
@@ -319,6 +364,8 @@ namespace powerfunctions {
       nibble2: number,
       nibble3: number
     ) {
+      state.messageToggle = ~state.messageToggle;
+      nibble1 = nibble1 + (state.messageToggle & 0b1000); // Toggle bit is verified on receiver if inc/dec/toggle command is received.
       const lrc = 0xf ^ nibble1 ^ nibble2 ^ nibble3;
       return (nibble1 << 12) | (nibble2 << 8) | (nibble3 << 4) | lrc;
     }
@@ -331,6 +378,22 @@ namespace powerfunctions {
       const nibble1 = 0b0000 + channel;
       const nibble2 = 0b0100 + output;
       const nibble3 = mapValueToPwmElseFloat(value);
+      return createMessageFromNibbles(nibble1, nibble2, nibble3);
+    }
+
+    export function createSingleOutputIncDecMessage(
+      channel: PowerFunctionsChannel,
+      output: PowerFunctionsOutput,
+      value: number
+    ) {
+      const nibble1 = 0b0000 + channel;
+      const nibble2 = 0b0110 + output;
+      let nibble3;
+      if (value == 1) {
+        nibble3 = 0b0100; // Increment PWM
+      } else {
+        nibble3 = 0b0101; // Decrement PWM
+      }
       return createMessageFromNibbles(nibble1, nibble2, nibble3);
     }
 
@@ -435,6 +498,7 @@ namespace powerfunctions {
 
   export function runTests() {
     {
+      state.messageToggle = 1;
       const c1RedFullForward = message.createSingleOutputPwmMessage(
         PowerFunctionsChannel.One,
         PowerFunctionsOutput.Red,
@@ -448,6 +512,7 @@ namespace powerfunctions {
     }
 
     {
+      state.messageToggle = 1;
       const c1ComboRedForwardBlueBackward = message.createComboDirectMessage(
         PowerFunctionsChannel.One,
         PowerFunctionsCommand.Forward,
@@ -461,6 +526,7 @@ namespace powerfunctions {
     }
 
     {
+      state.messageToggle = 1;
       const c1ComboRedFloatBlueBrake = message.createComboPwmMessage(
         PowerFunctionsChannel.One,
         8,

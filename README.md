@@ -40,12 +40,34 @@ powerfunctions.cfgSendCountDelay(PowerFunctionSendCount.five_times, PowerFunctio
 Configures zero speed behaviour of the motor (float or brake).
 
 ```sig
-powerfunctions.cfgMotorSpeedZeroCh(PowerFunctionsOutput.Red, 1, speed_0_brake)
+powerfunctions.cfgMotorSpeedZeroCh(PowerFunctionsOutput.Red, 1, PowerFunctionSpeedZero.speed_0_brake)
 ```
 #### Parameters
 - `motor` - the motor
 - `channel` - the channel of the motor from `1` to `4`
 - `behaviour` - the behaviour of the motor when speed is set to zero (float or brake)
+
+## powerfunctions.incCh
+
+Increments motor speed.
+
+```sig
+powerfunctions.incCh(PowerFunctionsOutput.Red, 1)
+```
+#### Parameters
+- `motor` - the motor
+- `channel` - the channel of the motor from `1` to `4`
+
+## powerfunctions.decCh
+
+Decrements motor speed.
+
+```sig
+powerfunctions.decCh(PowerFunctionsOutput.Red, 1)
+```
+#### Parameters
+- `motor` - the motor
+- `channel` - the channel of the motor from `1` to `4`
 
 ## powerfunctions.setSpeed
 
