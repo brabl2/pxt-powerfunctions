@@ -200,6 +200,23 @@ namespace powerfunctions {
   }
 
   /**
+   * Configures a motor direction.
+   * @param motor the motor
+   * @param channel the channel
+   * @param direction the direction
+   */
+  //% blockId=pf_cfg_motor_direction_ch
+  //% block="config direction of motor %motor channel %channel to %direction"
+  //% channel.min=1 channel.max=4 channel.defl=1
+  //% weight=88
+  export function cfgMotorDirectionCh(motor: PowerFunctionsOutput, channel: number, direction: PowerFunctionsDirection) {
+    channel = Math.max(1, Math.min(4, channel));
+    if (state) {
+      state.motorDirections[motor * 4 + channel - 1] = direction;
+    }
+  }
+
+  /**
    * Configures zero speed behaviour of the motor (float or brake).
    * @param motor the motor
    * @param channel the channel
@@ -214,6 +231,66 @@ namespace powerfunctions {
     channel = Math.max(1, Math.min(4, channel));
     if (state) {
       state.motorSpeedZeros[motor * 4 + channel - 1] = behaviour;
+    }
+  }
+
+  /**
+   * Sets the speed of a motor.
+   * @param motor the motor
+   * @param channel the channel
+   * @param speed speed of the motor
+   */
+  //% blockId=pf_set_speed_ch
+  //% block="set motor %motor channel %channel speed to %speed"
+  //% channel.min=1 channel.max=4 channel.defl=1
+  //% speed.min=-7 speed.max=7 speed.defl=3
+  //% weight=80
+  export function setSpeedCh(motor: PowerFunctionsOutput, channel: number, speed: number) {
+    channel = Math.max(1, Math.min(4, channel));
+    speed = Math.max(-7, Math.min(7, speed));
+    if (speed == 0) {
+      if (state.motorSpeedZeros[motor * 4 + channel - 1] == PowerFunctionSpeedZero.speed_0_float) {
+        speed = 8;
+      }
+    } else {
+      speed = speed * state.motorDirections[motor * 4 + channel - 1];
+    }
+    if (state) {
+      sendSingleOutputCommand(channel - 1, motor, speed);
+    }
+  }
+
+  /**
+   * Brakes then float.
+   * The motor's power is quickly reversed and thus the motor will stop abruptly.
+   * @param motor the motor
+   * @param channel the channel
+   */
+  //% blockId=pf_brake_ch
+  //% block="brake | motor %motor | channel %channel"
+  //% channel.min=1 channel.max=4 channel.defl=1
+  //% weight=70
+  export function brakeCh(motor: PowerFunctionsOutput, channel: number) {
+    channel = Math.max(1, Math.min(4, channel));
+    if (state) {
+      sendSingleOutputCommand(channel - 1, motor, 0);
+    }
+  }
+
+  /**
+   * Floats a motor to stop.
+   * The motor's power is switched off and thus the motor will roll to a stop.
+   * @param motor the motor
+   * @param channel the channel
+   */
+  //% blockId=pf_float_ch
+  //% block="float | motor %motor | channel %channel | to stop"
+  //% channel.min=1 channel.max=4 channel.defl=1
+  //% weight=60
+  export function floatCh(motor: PowerFunctionsOutput, channel: number) {
+    channel = Math.max(1, Math.min(4, channel));
+    if (state) {
+      sendSingleOutputCommand(channel - 1, motor, 8);
     }
   }
 
@@ -249,6 +326,8 @@ namespace powerfunctions {
     }
   }
 
+  //*********************************** original functions ***********************************
+
   /**
    * Sets the speed of a motor.
    * @param motor the motor
@@ -256,6 +335,7 @@ namespace powerfunctions {
    */
   //% blockId=powerfunctions_set_speed
   //% block="set | motor %motor | to %speed"
+  //% subcategory=original
   //% speed.min=-7 speed.max=7
   //% weight=80
   //% motor.fieldEditor="gridpicker" motor.fieldOptions.columns=4 motor.fieldOptions.tooltips="false"
@@ -280,6 +360,7 @@ namespace powerfunctions {
    */
   //% blockId=powerfunctions_brake
   //% block="brake| motor %motor"
+  //% subcategory=original
   //% weight=75
   //% motor.fieldEditor="gridpicker" motor.fieldOptions.columns=4 motor.fieldOptions.tooltips="false"
   export function brake(motor: PowerFunctionsMotor) {
@@ -295,6 +376,7 @@ namespace powerfunctions {
    */
   //% blockId=pf_float
   //% block="float | motor %motor | to stop"
+  //% subcategory=original
   //% weight=70
   //% motor.fieldEditor="gridpicker" motor.fieldOptions.columns=4 motor.fieldOptions.tooltips="false"
   export function float(motor: PowerFunctionsMotor) {
@@ -310,6 +392,7 @@ namespace powerfunctions {
    */
   //% blockId=pf_set_motor_direction
   //% block="set direction | of motor %motor | to %direction"
+  //% subcategory=original
   //% weight=20
   //% motor.fieldEditor="gridpicker" motor.fieldOptions.columns=4 motor.fieldOptions.tooltips="false"
   export function setMotorDirection(
@@ -320,6 +403,8 @@ namespace powerfunctions {
       state.motorDirections[motor] = direction;
     }
   }
+
+  //*********************************** original functions end ***********************************
 
   namespace message {
     function mapValueToPwmElseFloat(value: number): number {

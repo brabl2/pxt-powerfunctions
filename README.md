@@ -1,5 +1,7 @@
 # Power Functions IR Sender
 
+[![Build Status](https://travis-ci.org/philipphenkel/pxt-powerfunctions.svg?branch=master)](https://travis-ci.org/philipphenkel/pxt-powerfunctions)
+
 Control your LEGO® Power Functions motors using your micro:bit or Calliope-Mini, an infrared LED and MakeCode.
 This extension turns your device into a remote control for your Power Functions devices.
 
@@ -35,6 +37,18 @@ powerfunctions.cfgSendCountDelay(PowerFunctionSendCount.five_times, PowerFunctio
 - `count` - the IR message is transmitted count-times
 - `delay` - the delay between messages. It is safe to set this parameter to 'delay_short' in case of single LEGO® IR Receiver.
 
+## powerfunctions.cfgMotorDirectionCh
+
+Configures a motor direction.
+
+```sig
+powerfunctions.cfgMotorDirectionCh(PowerFunctionsOutput.Red, 1, PowerFunctionsDirection.Right)
+```
+#### Parameters
+- `motor` - the motor
+- `channel` - the channel of the motor from `1` to `4`
+- `direction` - the direction of the motor
+
 ## powerfunctions.cfgMotorSpeedZeroCh
 
 Configures zero speed behaviour of the motor (float or brake).
@@ -68,6 +82,42 @@ powerfunctions.decCh(PowerFunctionsOutput.Red, 1)
 #### Parameters
 - `motor` - the motor
 - `channel` - the channel of the motor from `1` to `4`
+
+## powerfunctions.setSpeedCh
+
+Sets the speed of a motor.
+
+```sig
+powerfunctions.setSpeedCh(PowerFunctionsOutput.Red, 1, 3)
+```
+#### Parameters
+- `motor` - the motor
+- `channel` - the channel of the motor from `1` to `4`
+- `speed` - the speed of the motor from `-7` to `7`
+
+## powerfunctions.brakeCh
+
+Brakes then float. The motor's power is quickly reversed and thus the motor will stop abruptly.
+
+```sig
+powerfunctions.brakeCh(PowerFunctionsOutput.Red, 1)
+```
+#### Parameters
+- `motor` - the motor
+- `channel` - the channel of the motor from `1` to `4`
+
+## powerfunctions.floatCh
+
+Floats a motor to stop. The motor's power is switched off and thus the motor will roll to a stop.
+
+```sig
+powerfunctions.floatCh(PowerFunctionsOutput.Red, 1)
+```
+#### Parameters
+- `motor` - the motor
+- `channel` - the channel of the motor from `1` to `4`
+
+# Original functions
 
 ## powerfunctions.setSpeed
 
@@ -116,23 +166,23 @@ powerfunctions.setMotorDirection(PowerFunctionsMotor.Red1, PowerFunctionsDirecti
 ```blocks
 basic.showIcon(IconNames.Heart);
 powerfunctions.connectIrLed(AnalogPin.P1);
-powerfunctions.setMotorDirection(PowerFunctionsMotor.Blue1, PowerFunctionsDirection.Right);
+powerfunctions.cfgMotorDirectionCh(PowerFunctionsOutput.Blue, 1, PowerFunctionsDirection.Right);
 
 input.onButtonPressed(Button.A, () => {
-  powerfunctions.setSpeed(PowerFunctionsMotor.Blue1, 3);
+  powerfunctions.setSpeedCh(PowerFunctionsOutput.Blue, 1, 3);
 });
 
 input.onButtonPressed(Button.B, () => {
-  powerfunctions.float(PowerFunctionsMotor.Blue1);
+  powerfunctions.floatCh(PowerFunctionsOutput.Blue, 1);
 });
 
 basic.forever(() => {
   led.plotBarGraph(input.lightLevel(), 255);
 
   if (input.lightLevel() > 200) {
-    powerfunctions.float(PowerFunctionsMotor.Blue1);
+    powerfunctions.floatCh(PowerFunctionsOutput.Blue, 1);
     basic.pause(5000);
-    powerfunctions.setSpeed(PowerFunctionsMotor.Blue1, 2);
+    powerfunctions.setSpeedCh(PowerFunctionsOutput.Blue, 1, 2);
     basic.pause(3000);
   }
 });
