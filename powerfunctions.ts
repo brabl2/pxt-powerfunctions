@@ -5,6 +5,12 @@
  * (c) 2017-2020, Philipp Henkel
  */
 
+enum PowerFunctionMicroBitVer {
+  //% block="micro:bit(V2)"
+  Ver2 = 2,
+  //% block="micro:bit(V1)"
+  Ver1 = 1,
+}
 enum PowerFunctionSpeedZero {
   //% block="float (default)"
   speed_0_float = 0,
@@ -148,16 +154,55 @@ namespace powerfunctions {
   }
 
   /**
-   * Configures the infrared LED pin. A 940 nm emitting diode is required.
+   * Configures the infrared LED analog pin. Using hardware PWM mode. A 940 nm emitting diode is required.
    * @param pin pin an attached IR LED
    */
   //% blockId=pf_connect_ir_led
-  //% block="connect IR LED at pin %pin"
-  //% weight=90
+  //% block="connect IR LED at PWM pin %pin"
+  //% weight=91
   //% pin.fieldEditor="gridpicker" pin.fieldOptions.columns=4 pin.fieldOptions.tooltips="false"
   export function connectIrLed(pin: AnalogPin) {
     state = {
-      irDevice: new InfraredDevice(pin),
+      irDevice: new InfraredDevice(pin,DigitalPin.P0,0),
+      messageToggle: 0,
+      sendCount: PowerFunctionSendCount.five_times,
+      sendDelay: PowerFunctionSendDelay.delay_normal,
+      motorDirections: [
+        PowerFunctionsDirection.Left,
+        PowerFunctionsDirection.Left,
+        PowerFunctionsDirection.Left,
+        PowerFunctionsDirection.Left,
+        PowerFunctionsDirection.Left,
+        PowerFunctionsDirection.Left,
+        PowerFunctionsDirection.Left,
+        PowerFunctionsDirection.Left,
+      ],
+      motorSpeedZeros: [
+        PowerFunctionSpeedZero.speed_0_float,
+        PowerFunctionSpeedZero.speed_0_float,
+        PowerFunctionSpeedZero.speed_0_float,
+        PowerFunctionSpeedZero.speed_0_float,
+        PowerFunctionSpeedZero.speed_0_float,
+        PowerFunctionSpeedZero.speed_0_float,
+        PowerFunctionSpeedZero.speed_0_float,
+        PowerFunctionSpeedZero.speed_0_float,
+      ],
+    };
+  }
+
+  /**
+   * Configures the infrared LED digital pin. Using software bit-bang mode. A 940 nm emitting diode is required.
+   * @param pin pin an attached IR LED
+   * @param ver micro:bit version
+   */
+  //% blockId=pf_connect_ir_led_bb
+  //% block="connect IR LED at BitBang pin %pin on %ver"
+  //% weight=90
+  //% pin.fieldEditor="gridpicker" pin.fieldOptions.columns=4 pin.fieldOptions.tooltips="false"
+  //% ver.defl=2
+  export function connectIrLedBitBang(pin: DigitalPin, ver: PowerFunctionMicroBitVer) {
+    state = {
+      irDevice: new InfraredDevice(AnalogPin.P0,pin,ver),
       messageToggle: 0,
       sendCount: PowerFunctionSendCount.five_times,
       sendDelay: PowerFunctionSendDelay.delay_normal,
@@ -511,33 +556,124 @@ namespace powerfunctions {
   const HIGH_PAUSE = Math.idiv((27 - 6) * 1000000, 38000);
 
   export class InfraredDevice {
-    private pin: AnalogPin;
+    private pinA: AnalogPin;
+    private pinD: DigitalPin;
+    private pinMode: number; // 0=PWM(Analog)  1=BitBang(Digital,V1)  2=BitBang(Digital,V2)
     private waitCorrection: number;
+    private impMicros: number;
 
-    constructor(pin: AnalogPin, pwmPeriod = 26) {
-      this.pin = pin;
-      pins.analogWritePin(this.pin, 0);
-      pins.analogSetPeriod(this.pin, pwmPeriod);
-
-      // Measure the time we need for a minimal bit (analogWritePin and waitMicros)
-      {
-        const start = input.runningTimeMicros();
-        const runs = 8;
-        for (let i = 0; i < runs; i++) {
-          this.transmitBit(1, 1);
+    constructor(pinA: AnalogPin, pinD: DigitalPin, pinMode: number, pwmPeriod = 26) {
+      this.pinMode = pinMode;
+      let start_time;
+      let end_time;
+      let i;
+      let runs;
+      if (this.pinMode == 0) { // PWM
+        this.pinA = pinA;
+        pins.analogWritePin(this.pinA, 0);
+        pins.analogSetPeriod(this.pinA, pwmPeriod);
+        // Measure the time we need for a minimal bit (analogWritePin and waitMicros)
+        {
+          runs = 8;
+          start_time = input.runningTimeMicros();
+          for (i = 0; i < runs; i++) {
+            this.transmitBit(1, 1);
+          }
+          end_time = input.runningTimeMicros();
+          this.waitCorrection = Math.idiv(end_time - start_time - runs * 2, runs * 2);
         }
-        const end = input.runningTimeMicros();
-        this.waitCorrection = Math.idiv(end - start - runs * 2, runs * 2);
+//        serial.writeNumbers([this.waitCorrection]);
+
+      } else if (this.pinMode == 2) { // BitBang (V2)
+
+        this.pinD = pinD;
+        pins.digitalWritePin(this.pinD, 0);
+
+        // measure shortest time of transmitBitBB2 function (without any impulses)
+        runs = 10;
+        start_time = input.runningTimeMicros();
+        for (i = 0; i < runs; i++) {
+          this.transmitBitBB2(0,1,1);
+        }
+        end_time = input.runningTimeMicros();
+        this.waitCorrection = Math.idiv(end_time-start_time, runs) - 1;
+
+        // measure shortest time of transmitBitBB2 function (with 6 impulses)
+        runs = 10;
+        start_time = input.runningTimeMicros();
+        for (i = 0; i < runs; i++) {
+          this.transmitBitBB2(6,1,1);
+        }
+        end_time = input.runningTimeMicros();
+        this.impMicros = 26/2 - (Math.idiv(end_time-start_time, runs*6*2) - 1); // one impulse should be 26 micros
+
+//        serial.writeNumbers([this.waitCorrection, this.impMicros]);
+
+//         // measure shortest time of transmitBitBB2 function
+//         runs = 10;
+//         start_time = input.runningTimeMicros();
+//         for (i = 0; i < runs; i++) {
+//           this.transmitBitBB2(6,this.impMicros,1);
+//         }
+//         end_time = input.runningTimeMicros();
+//         serial.writeNumbers([Math.idiv(end_time-start_time, runs)-this.waitCorrection]); // measured time is 157 micros
+
+      } else { // BitBang (V1)
+
+        this.pinD = pinD;
+        pins.digitalWritePin(this.pinD, 0);
+        this.waitCorrection = 2; // no calibration, transmitBitBB1 function is hard-coded
+
+//         // measure shortest time of transmitBitBB1 function
+//         runs = 10;
+//         start_time = input.runningTimeMicros();
+//         for (i = 0; i < runs; i++) {
+//           this.transmitBitBB1(0);
+//         }
+//         end_time = input.runningTimeMicros();
+//         serial.writeNumbers([Math.idiv(end_time-start_time, runs)-this.waitCorrection]); // measured time is 157 micros
+
       }
 
       // Insert a pause between callibration and first message
-      control.waitMicros(2000);
+      basic.pause(2); // 2ms
     }
 
-    public transmitBit(highMicros: number, lowMicros: number): void {
-      pins.analogWritePin(this.pin, 511);
+    public transmitBit(highMicros: number, lowMicros: number): void { // PWM
+      pins.analogWritePin(this.pinA, 511);
       control.waitMicros(highMicros);
-      pins.analogWritePin(this.pin, 1);
+      pins.analogWritePin(this.pinA, 0);
+      control.waitMicros(lowMicros);
+    }
+
+    public transmitBitBB2(impNumber: number, impMicros: number, lowMicros: number): void { // BitBang (V2)
+      for (let i = 0; i < impNumber; i++) {        // 6 x 26 micros (1/38k) = 156 micros
+        pins.digitalWritePin(this.pinD, 1); // 5 micros
+        control.waitMicros(impMicros);
+        pins.digitalWritePin(this.pinD, 0); // 5 micros
+        control.waitMicros(impMicros);
+      }
+      control.waitMicros(lowMicros);
+    }
+
+    public transmitBitBB1(lowMicros: number): void { // BitBang (V1)
+      // 6 x 26 micros (1/38k) = 156 micros
+      pins.digitalWritePin(this.pinD, 1);
+      control.waitMicros(1);
+      pins.digitalWritePin(this.pinD, 0);
+      pins.digitalWritePin(this.pinD, 1);
+      pins.digitalWritePin(this.pinD, 0);
+      pins.digitalWritePin(this.pinD, 1);
+      control.waitMicros(1);
+      pins.digitalWritePin(this.pinD, 0);
+      pins.digitalWritePin(this.pinD, 1);
+      control.waitMicros(1);
+      pins.digitalWritePin(this.pinD, 0);
+      pins.digitalWritePin(this.pinD, 1);
+      pins.digitalWritePin(this.pinD, 0);
+      pins.digitalWritePin(this.pinD, 1);
+      control.waitMicros(1);
+      pins.digitalWritePin(this.pinD, 0);
       control.waitMicros(lowMicros);
     }
 
@@ -555,20 +691,44 @@ namespace powerfunctions {
         let mask = 1 << (MESSAGE_BITS - 1);
 
         // start bit
-        this.transmitBit(ir_mark, start_stop_pause);
+        if (this.pinMode == 0) { // PWM
+          this.transmitBit(ir_mark, start_stop_pause);
+        } else if (this.pinMode == 2) { // BitBang (V2)
+          this.transmitBitBB2(6, this.impMicros, start_stop_pause);
+        } else { // BitBang (V1)
+          this.transmitBitBB1(start_stop_pause);
+        }
 
         // low and high bits
         while (mask > 0) {
           if (message & mask) {
-            this.transmitBit(ir_mark, high_pause);
+            if (this.pinMode == 0) { // PWM
+              this.transmitBit(ir_mark, high_pause);
+            } else if (this.pinMode == 2) { // BitBang (V2)
+              this.transmitBitBB2(6, this.impMicros, high_pause);
+            } else { // BitBang (V1)
+              this.transmitBitBB1(high_pause);
+            }
           } else {
-            this.transmitBit(ir_mark, low_pause);
+            if (this.pinMode == 0) { // PWM
+              this.transmitBit(ir_mark, low_pause);
+            } else if (this.pinMode == 2) { // BitBang (V2)
+              this.transmitBitBB2(6, this.impMicros, low_pause);
+            } else { // BitBang (V1)
+              this.transmitBitBB1(low_pause);
+            }
           }
           mask >>= 1;
         }
 
         // stop bit
-        this.transmitBit(ir_mark, start_stop_pause);
+        if (this.pinMode == 0) { // PWM
+          this.transmitBit(ir_mark, start_stop_pause);
+        } else if (this.pinMode == 2) { // BitBang (V2)
+          this.transmitBitBB2(6, this.impMicros, start_stop_pause);
+        } else { // BitBang (V1)
+          this.transmitBitBB1(start_stop_pause);
+        }
 
         if (state.sendDelay == PowerFunctionSendDelay.delay_short) {
           basic.pause(MAX_LENGTH_MS); //16ms

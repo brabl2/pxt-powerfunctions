@@ -1,6 +1,6 @@
 # Power Functions IR Sender
 
-[![Build Status](https://travis-ci.org/philipphenkel/pxt-powerfunctions.svg?branch=master)](https://travis-ci.org/philipphenkel/pxt-powerfunctions)
+![IR sender+receiver](icon.png)
 
 Control your LEGO® Power Functions motors using your micro:bit or Calliope-Mini, an infrared LED and MakeCode.
 This extension turns your device into a remote control for your Power Functions devices.
@@ -15,13 +15,24 @@ Open MakeCode and select '+ Extensions' in the 'Advanced' menu. You need to ente
 
 ## powerfunctions.connectIrLed
 
-Configures the infrared LED pin. A 940 nm emitting diode is required.
+Configures the infrared LED analog pin. Using hardware PWM mode. A 940 nm emitting diode is required.
 
 ```sig
 powerfunctions.connectIrLed(AnalogPin.P0)
 ```
 #### Parameters
 - `pin` - analog pin with an attached IR-emitting LED
+
+## powerfunctions.connectIrLedBitBang
+
+Configures the infrared LED digital pin. Using software bit-bang mode. A 940 nm emitting diode is required.
+
+```sig
+powerfunctions.connectIrLed(DigitalPin.P0, PowerFunctionMicroBitVer.Ver2)
+```
+#### Parameters
+- `pin` - digital pin with an attached IR-emitting LED
+- `ver` - micro:bit version
 
 ## powerfunctions.cfgSendCountDelay
 
